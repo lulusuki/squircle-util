@@ -1,0 +1,191 @@
+use std::{io::{self, Result}, path::Path};
+
+use crate::{objects::{ObjectDefinition, note::Note}, sspm::SSPMSerde, phxm::PXHMSerde};
+
+#[derive(Debug, Default)]
+pub enum MapFormat {
+    PHXM,
+    #[default]
+    SSPM,
+}
+
+#[derive(Debug, Default)]
+pub struct MapSet {
+    pub id: String,
+    pub maps: Vec<Map>
+}
+
+#[derive(Debug, Default)]
+pub struct Map {
+    pub id: String,
+    pub info: MapInfo,
+    pub metadata: MapMetadata,
+    pub objects: MapObjects
+}
+
+#[derive(Debug, Default)]
+pub struct PartialMap {
+    pub id: String,
+    pub info: MapInfo,
+    pub metadata: MapMetadata,
+}
+
+#[derive(Debug, Default, Clone)]
+pub struct MapInfo {
+    pub title: String,
+    pub mappers: Vec<String>,
+    pub artist: String,
+    pub length: u32,
+    pub difficulty_name: DifficultyName,
+    pub audio_buf: Option<Vec<u8>>,
+    pub cover_buf: Option<Vec<u8>>,
+    pub video_buf: Option<Vec<u8>>,
+    pub note_count: u32,
+    pub object_count: u32,
+    pub artist_link: Option<String>,
+    pub artist_platform: Option<String>
+}
+
+#[derive(Debug, Default)]
+pub struct MapMetadata {
+    pub format: MapFormat,
+}
+
+#[derive(Debug, Clone)]
+pub enum DifficultyName {
+    None(String),
+    Easy(String),
+    Medium(String),
+    Hard(String),
+    Expert(String),
+    Insane(String),
+    Illogical(String)
+}
+
+impl Default for DifficultyName {
+    fn default() -> Self {
+        todo!()
+    }
+}
+
+impl DifficultyName {
+    pub fn from_u8(value: u8) -> Option<Self> {
+        match value {
+            0 => Some(DifficultyName::None("N/A".to_string())),
+            1 => Some(DifficultyName::Easy("Easy".to_string())),
+            2 => Some(DifficultyName::Medium("Medium".to_string())),
+            3 => Some(DifficultyName::Hard("Hard".to_string())),
+            4 => Some(DifficultyName::Expert("Expert".to_string())),
+            5 => Some(DifficultyName::Insane("Insane".to_string())),
+            6 => Some(DifficultyName::Illogical("Illogical".to_string())),
+            _ => None,
+        }
+    }
+
+    pub fn to_u8(&self) -> u8 {
+        match self {
+            DifficultyName::None(_) => 0,
+            DifficultyName::Easy(_) => 1,
+            DifficultyName::Medium(_) => 2,
+            DifficultyName::Hard(_) => 3,
+            DifficultyName::Expert(_) => 4,
+            DifficultyName::Insane(_) => 5,
+            DifficultyName::Illogical(_) => 6
+        }
+    }
+
+    pub fn get_value(&self) -> String {
+        match self {
+            DifficultyName::None(str) => str.clone(),
+            DifficultyName::Easy(str) => str.clone(),
+            DifficultyName::Medium(str) => str.clone(),
+            DifficultyName::Hard(str) => str.clone(),
+            DifficultyName::Expert(str) => str.clone(),
+            DifficultyName::Insane(str) => str.clone(),
+            DifficultyName::Illogical(str) => str.clone()
+        }
+    }
+
+    pub fn is_default(&self) -> bool {
+        match self {
+            DifficultyName::None(str) => str == "N/A",
+            DifficultyName::Easy(str) => str == "Easy",
+            DifficultyName::Medium(str) => str == "Medium",
+            DifficultyName::Hard(str) => str == "Hard",
+            DifficultyName::Expert(str) => str == "Expert",
+            DifficultyName::Insane(str) => str == "Insane",
+            DifficultyName::Illogical(str) => str == "Illogical"
+        }
+    }
+
+    pub fn set_value(&mut self, value: String) {
+        match self {
+            DifficultyName::None(str) |
+            DifficultyName::Easy(str) |
+            DifficultyName::Medium(str) |
+            DifficultyName::Hard(str) |
+            DifficultyName::Expert(str) |
+            DifficultyName::Insane(str) |
+            DifficultyName::Illogical(str) => {
+                *str = value;
+            }
+        }
+    }
+}
+
+#[derive(Debug, Default)]
+pub struct MapObjects {
+    pub notes: Vec<Note>,
+    pub undefined: Vec<ObjectDefinition>
+}
+
+pub trait MapSetSerde {
+    fn from_file(path: &Path) -> Result<MapSet>;
+    fn to_file(path: &Path) -> Result<()>;
+}
+
+pub trait MapSerde {
+    fn from_file(path: &Path) -> Result<Map>;
+    fn to_file(path: &Path, map: &Map) -> Result<()>;
+}
+
+pub trait ObjectParser {
+    fn from_definition(definition: ObjectDefinition) -> Result<Self>
+    where
+        Self: Sized;
+}
+
+impl MapSet {
+    #[allow(unused)]
+    fn from_nyaz(path: &Path) -> Result<Self> {
+        todo!()
+    }
+}
+
+impl Map {
+    pub fn from_file(path: &Path) -> Result<Map> {
+        let err = io::Error::new(
+            io::ErrorKind::InvalidFilename,
+            "Could not get valid file extension"
+        );
+
+        if let Some(ext) = path.extension() {
+            let ext = ext.to_str().unwrap_or("");
+            return match ext {
+                "sspm" => Map::from_sspm(path),
+                "phxm" => Map::from_phxm(path),
+                _ => Err(err)
+            }
+        }
+
+        Err(err)
+    }
+
+    fn from_phxm(path: &Path) -> Result<Self> {
+        PXHMSerde::from_file(path)
+    }
+
+    fn from_sspm(path: &Path) -> Result<Self> {
+        SSPMSerde::from_file(path)
+    }
+}
