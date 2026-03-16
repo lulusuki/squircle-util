@@ -1,6 +1,13 @@
-use std::{io::{self, Result}, path::Path};
+use std::{
+    io::{self, Read, Result, Seek},
+    path::Path,
+};
 
-use crate::{objects::{ObjectDefinition, note::Note}, sspm::SSPMSerde, phxm::PXHMSerde};
+use crate::{
+    objects::{ObjectDefinition, note::Note},
+    phxm::PHXMSerde,
+    sspm::SSPMSerde,
+};
 
 #[derive(Debug, Default)]
 pub enum MapFormat {
@@ -12,7 +19,7 @@ pub enum MapFormat {
 #[derive(Debug, Default)]
 pub struct MapSet {
     pub id: String,
-    pub maps: Vec<Map>
+    pub maps: Vec<Map>,
 }
 
 #[derive(Debug, Default)]
@@ -20,7 +27,7 @@ pub struct Map {
     pub id: String,
     pub info: MapInfo,
     pub metadata: MapMetadata,
-    pub objects: MapObjects
+    pub objects: MapObjects,
 }
 
 #[derive(Debug, Default)]
@@ -42,8 +49,9 @@ pub struct MapInfo {
     pub video_buf: Option<Vec<u8>>,
     pub note_count: u32,
     pub object_count: u32,
+    pub rating: f32,
     pub artist_link: Option<String>,
-    pub artist_platform: Option<String>
+    pub artist_platform: Option<String>,
 }
 
 #[derive(Debug, Default)]
@@ -59,12 +67,12 @@ pub enum DifficultyName {
     Hard(String),
     Expert(String),
     Insane(String),
-    Illogical(String)
+    Illogical(String),
 }
 
 impl Default for DifficultyName {
     fn default() -> Self {
-        todo!()
+        DifficultyName::None(String::from("N/A"))
     }
 }
 
@@ -90,7 +98,7 @@ impl DifficultyName {
             DifficultyName::Hard(_) => 3,
             DifficultyName::Expert(_) => 4,
             DifficultyName::Insane(_) => 5,
-            DifficultyName::Illogical(_) => 6
+            DifficultyName::Illogical(_) => 6,
         }
     }
 
@@ -102,7 +110,7 @@ impl DifficultyName {
             DifficultyName::Hard(str) => str.clone(),
             DifficultyName::Expert(str) => str.clone(),
             DifficultyName::Insane(str) => str.clone(),
-            DifficultyName::Illogical(str) => str.clone()
+            DifficultyName::Illogical(str) => str.clone(),
         }
     }
 
@@ -114,19 +122,19 @@ impl DifficultyName {
             DifficultyName::Hard(str) => str == "Hard",
             DifficultyName::Expert(str) => str == "Expert",
             DifficultyName::Insane(str) => str == "Insane",
-            DifficultyName::Illogical(str) => str == "Illogical"
+            DifficultyName::Illogical(str) => str == "Illogical",
         }
     }
 
     pub fn set_value(&mut self, value: String) {
         match self {
-            DifficultyName::None(str) |
-            DifficultyName::Easy(str) |
-            DifficultyName::Medium(str) |
-            DifficultyName::Hard(str) |
-            DifficultyName::Expert(str) |
-            DifficultyName::Insane(str) |
-            DifficultyName::Illogical(str) => {
+            DifficultyName::None(str)
+            | DifficultyName::Easy(str)
+            | DifficultyName::Medium(str)
+            | DifficultyName::Hard(str)
+            | DifficultyName::Expert(str)
+            | DifficultyName::Insane(str)
+            | DifficultyName::Illogical(str) => {
                 *str = value;
             }
         }
@@ -136,16 +144,22 @@ impl DifficultyName {
 #[derive(Debug, Default)]
 pub struct MapObjects {
     pub notes: Vec<Note>,
-    pub undefined: Vec<ObjectDefinition>
+    pub undefined: Vec<ObjectDefinition>,
 }
 
 pub trait MapSetSerde {
     fn from_file(path: &Path) -> Result<MapSet>;
+
+    fn from_reader<T: Read + Seek>(reader: T) -> Result<MapSet>;
+
     fn to_file(path: &Path) -> Result<()>;
 }
 
 pub trait MapSerde {
     fn from_file(path: &Path) -> Result<Map>;
+
+    fn from_reader<T: Read + Seek>(reader: T) -> Result<Map>;
+
     fn to_file(path: &Path, map: &Map) -> Result<()>;
 }
 
@@ -166,26 +180,34 @@ impl Map {
     pub fn from_file(path: &Path) -> Result<Map> {
         let err = io::Error::new(
             io::ErrorKind::InvalidFilename,
-            "Could not get valid file extension"
+            "could not get valid file extension",
         );
 
         if let Some(ext) = path.extension() {
             let ext = ext.to_str().unwrap_or("");
             return match ext {
-                "sspm" => Map::from_sspm(path),
-                "phxm" => Map::from_phxm(path),
-                _ => Err(err)
-            }
+                "sspm" => Map::from_sspm_file(path),
+                "phxm" => Map::from_phxm_file(path),
+                _ => Err(err),
+            };
         }
 
         Err(err)
     }
 
-    fn from_phxm(path: &Path) -> Result<Self> {
-        PXHMSerde::from_file(path)
+    fn from_phxm_file(path: &Path) -> Result<Self> {
+        PHXMSerde::from_file(path)
     }
 
-    fn from_sspm(path: &Path) -> Result<Self> {
+    fn from_phxm_reader<T: Read + Seek>(reader: T) -> Result<Self> {
+        PHXMSerde::from_reader(reader)
+    }
+
+    fn from_sspm_file(path: &Path) -> Result<Self> {
         SSPMSerde::from_file(path)
+    }
+
+    fn from_sspm_reader<T: Read + Seek>(reader: T) -> Result<Self> {
+        SSPMSerde::from_reader(reader)
     }
 }

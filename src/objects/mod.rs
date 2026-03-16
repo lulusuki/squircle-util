@@ -1,4 +1,4 @@
-use std::io::Result;
+use std::{collections::HashMap, io::Result};
 
 use crate::{Vector2, Vector3};
 
@@ -24,10 +24,10 @@ pub enum ObjectType {
     Vec3(Option<Vector3>),
     Vec(Option<Vec<ObjectType>>),
     LongVec(Option<Vec<ObjectType>>),
+    HashMap(Option<HashMap<ObjectType, ObjectType>>),
+    LongHashMap(Option<HashMap<ObjectType, ObjectType>>),
+    Tuple(Option<Vec<ObjectType>>),
 }
-
-#[derive(Debug)]
-pub enum QEMZObjectType {}
 
 #[derive(Debug)]
 pub struct ObjectDefinition {

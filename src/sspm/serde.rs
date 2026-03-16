@@ -6,9 +6,9 @@ use std::path::Path;
 
 use num::Zero;
 
+use super::{SSPMReader, SSPMWriter};
 use crate::Vector2;
-use crate::io::{BinaryReader, BinaryWriter};
-use crate::map::{DifficultyName, Map, MapInfo, MapMetadata, MapObjects, MapSerde};
+use crate::map::{DifficultyName, Map, MapInfo, MapMetadata, MapObjects, MapSerde, MapSet};
 use crate::objects::note::Note;
 use crate::objects::{ObjectDefinition, ObjectType, TimelineObject};
 
@@ -36,14 +36,14 @@ impl ObjectType {
             0x0C => Ok(ObjectType::Vec(None)),
             _ => Err(io::Error::new(
                 io::ErrorKind::InvalidData,
-                "Invalid object type",
+                "invalid object type",
             )),
         }
     }
 }
 
 impl MapSerde for SSPMSerde {
-    // Always serialize to sspm-v2 instead of v1 since v1 is outdated
+    // Always serialize to v2 instead of v1
     // TODO: finish serializer (object parsing)
     fn to_file(path: &Path, map: &Map) -> Result<()> {
         if path.extension() != Some(OsStr::new("sspm")) {
@@ -54,7 +54,7 @@ impl MapSerde for SSPMSerde {
         }
 
         let writer = File::create(path)?;
-        let mut writer = BinaryWriter::new(writer);
+        let mut writer = SSPMWriter::new(writer);
 
         // Header
         writer.write_all(b"SS+m")?; // File signature
@@ -172,8 +172,16 @@ impl MapSerde for SSPMSerde {
 
         let reader = File::open(path)?;
 
-        let mut reader = BinaryReader::new(reader);
+        Self::parse_sspm(SSPMReader::new(reader))
+    }
 
+    fn from_reader<T: Read + Seek>(reader: T) -> Result<Map> {
+        Self::parse_sspm(SSPMReader::new(reader))
+    }
+}
+
+impl SSPMSerde {
+    fn parse_sspm<T: Read + Seek>(mut reader: SSPMReader<T>) -> Result<Map> {
         // Header structure:
         // The first 4 bytes are the file signature "SS+m"
         // The next 2 bytes are the version of the sspm (currently only version 2 is supported)
@@ -198,10 +206,8 @@ impl MapSerde for SSPMSerde {
             )),
         }
     }
-}
 
-impl SSPMSerde {
-    fn parse_sspm_v1<T: Read + Seek>(mut reader: BinaryReader<T>) -> Result<Map> {
+    fn parse_sspm_v1<T: Read + Seek>(mut reader: SSPMReader<T>) -> Result<Map> {
         let map_id = reader.read_newline_string()?; // Id of the map
         let map_name = reader.read_newline_string()?; // Name of the map
         let mappers = reader.read_newline_string()?; // Mappers
@@ -265,7 +271,7 @@ impl SSPMSerde {
         })
     }
 
-    fn parse_sspm_v2<T: Read + Seek>(mut reader: BinaryReader<T>) -> Result<Map> {
+    fn parse_sspm_v2<T: Read + Seek>(mut reader: SSPMReader<T>) -> Result<Map> {
         let _hash = reader.read_sha1()?; // SHA1 hash of the file
         let millisecond = reader.read_u32()?; // Last object millisecond
         let note_count = reader.read_u32()?; // Note object count
@@ -419,7 +425,7 @@ impl SSPMSerde {
     fn parse_definitions<T: Read + Seek>(
         marker_definition: &ObjectDefinition,
         ms: u32,
-        parser: &mut BinaryReader<T>,
+        parser: &mut SSPMReader<T>,
     ) -> io::Result<ObjectDefinition> {
         let mut object_types = Vec::<ObjectType>::new();
 
@@ -455,7 +461,7 @@ impl SSPMSerde {
     // Even though this follows the specification some maps have invalid custom data that causes errors
     // if custom data is invalid then just ignore custom data and continue parsing
     fn get_custom_data<T: Read + Seek>(
-        mut reader: &mut BinaryReader<T>,
+        mut reader: &mut SSPMReader<T>,
         offset: u64,
     ) -> Result<HashMap<String, ObjectType>> {
         let mut custom_data = HashMap::<String, ObjectType>::new();
@@ -477,7 +483,7 @@ impl SSPMSerde {
 
     fn parse_types<T: Read + Seek>(
         object_type: &ObjectType,
-        parser: &mut BinaryReader<T>,
+        parser: &mut SSPMReader<T>,
     ) -> io::Result<ObjectType> {
         match object_type {
             ObjectType::U8(_) => Self::parse_u8(parser),
@@ -498,31 +504,31 @@ impl SSPMSerde {
         }
     }
 
-    fn parse_u8<T: Read + Seek>(parser: &mut BinaryReader<T>) -> Result<ObjectType> {
+    fn parse_u8<T: Read + Seek>(parser: &mut SSPMReader<T>) -> Result<ObjectType> {
         Ok(ObjectType::U8(Some(parser.read_u8()?)))
     }
 
-    fn parse_u16<T: Read + Seek>(parser: &mut BinaryReader<T>) -> Result<ObjectType> {
+    fn parse_u16<T: Read + Seek>(parser: &mut SSPMReader<T>) -> Result<ObjectType> {
         Ok(ObjectType::U16(Some(parser.read_u16()?)))
     }
 
-    fn parse_u32<T: Read + Seek>(parser: &mut BinaryReader<T>) -> Result<ObjectType> {
+    fn parse_u32<T: Read + Seek>(parser: &mut SSPMReader<T>) -> Result<ObjectType> {
         Ok(ObjectType::U32(Some(parser.read_u32()?)))
     }
 
-    fn parse_u64<T: Read + Seek>(parser: &mut BinaryReader<T>) -> Result<ObjectType> {
+    fn parse_u64<T: Read + Seek>(parser: &mut SSPMReader<T>) -> Result<ObjectType> {
         Ok(ObjectType::U64(Some(parser.read_u64()?)))
     }
 
-    fn parse_f32<T: Read + Seek>(parser: &mut BinaryReader<T>) -> Result<ObjectType> {
+    fn parse_f32<T: Read + Seek>(parser: &mut SSPMReader<T>) -> Result<ObjectType> {
         Ok(ObjectType::F32(Some(parser.read_f32()?)))
     }
 
-    fn parse_f64<T: Read + Seek>(parser: &mut BinaryReader<T>) -> Result<ObjectType> {
+    fn parse_f64<T: Read + Seek>(parser: &mut SSPMReader<T>) -> Result<ObjectType> {
         Ok(ObjectType::F64(Some(parser.read_f64()?)))
     }
 
-    fn parse_vec2<T: Read + Seek>(parser: &mut BinaryReader<T>) -> Result<ObjectType> {
+    fn parse_vec2<T: Read + Seek>(parser: &mut SSPMReader<T>) -> Result<ObjectType> {
         let quantum = parser.read_bool()?;
         let mut pos = Vector2::zero();
 
@@ -532,15 +538,18 @@ impl SSPMSerde {
                 pos.y = parser.read_f32()?;
             }
             false => {
-                pos.x = (parser.read_u8()? as f32) - 2.0;
-                pos.y = (parser.read_u8()? as f32) - 2.0;
+                pos.x = parser.read_u8()? as f32;
+                pos.y = parser.read_u8()? as f32;
             }
         };
+
+        pos.x -= 1.0;
+        pos.y = -pos.y + 1.0;
 
         Ok(ObjectType::Vec2(Some(pos)))
     }
 
-    fn parse_buf<T: Read + Seek>(parser: &mut BinaryReader<T>) -> Result<ObjectType> {
+    fn parse_buf<T: Read + Seek>(parser: &mut SSPMReader<T>) -> Result<ObjectType> {
         let mut length = [0u8; 2];
         parser.read_exact(&mut length)?;
         let mut buffer = vec![0u8; u16::from_le_bytes(length) as usize];
@@ -549,7 +558,7 @@ impl SSPMSerde {
         Ok(ObjectType::Buf(Some(buffer)))
     }
 
-    fn parse_long_buf<T: Read + Seek>(parser: &mut BinaryReader<T>) -> Result<ObjectType> {
+    fn parse_long_buf<T: Read + Seek>(parser: &mut SSPMReader<T>) -> Result<ObjectType> {
         let mut length = [0u8; 4];
         parser.read_exact(&mut length)?;
         let mut buffer = vec![0u8; u32::from_le_bytes(length) as usize];
@@ -558,17 +567,17 @@ impl SSPMSerde {
         Ok(ObjectType::LongBuf(Some(buffer)))
     }
 
-    fn parse_string<T: Read + Seek>(parser: &mut BinaryReader<T>) -> Result<ObjectType> {
+    fn parse_string<T: Read + Seek>(parser: &mut SSPMReader<T>) -> Result<ObjectType> {
         Ok(ObjectType::String(Some(parser.read_string()?)))
     }
 
-    fn parse_long_string<T: Read + Seek>(parser: &mut BinaryReader<T>) -> Result<ObjectType> {
+    fn parse_long_string<T: Read + Seek>(parser: &mut SSPMReader<T>) -> Result<ObjectType> {
         Ok(ObjectType::LongString(Some(parser.read_long_string()?)))
     }
 
     // TODO: parse vec types
     #[allow(unused)]
-    fn parse_vec<T: Read + Seek>(parser: &mut BinaryReader<T>) -> Result<ObjectType> {
+    fn parse_vec<T: Read + Seek>(parser: &mut SSPMReader<T>) -> Result<ObjectType> {
         todo!()
     }
 }
