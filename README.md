@@ -1,1 +1,2 @@
-# Work In Progress
+# Squircle Util
+Parser for Rhythia type maps
