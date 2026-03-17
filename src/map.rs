@@ -1,5 +1,5 @@
 use std::{
-    io::{self, Read, Result, Seek},
+    io::{self, Read, Result, Seek, Write},
     path::Path,
 };
 
@@ -161,19 +161,14 @@ pub trait MapSerde {
     fn from_reader<T: Read + Seek>(reader: T) -> Result<Map>;
 
     fn to_file(path: &Path, map: &Map) -> Result<()>;
+
+    fn to_writer<T: Write + Seek>(writer: T, map: &Map) -> Result<()>;
 }
 
 pub trait ObjectParser {
     fn from_definition(definition: ObjectDefinition) -> Result<Self>
     where
         Self: Sized;
-}
-
-impl MapSet {
-    #[allow(unused)]
-    fn from_nyaz(path: &Path) -> Result<Self> {
-        todo!()
-    }
 }
 
 impl Map {
@@ -195,22 +190,34 @@ impl Map {
         Err(err)
     }
 
+    pub fn from_reader<T: Read + Seek, S>(reader: T) -> Result<Map>
+    where
+        S: MapSerde,
+    {
+        S::from_reader(reader)
+    }
+
+    pub fn to_file<S>(path: &Path, map: &Map) -> Result<()>
+    where
+        S: MapSerde,
+    {
+        S::to_file(path, map)?;
+        Ok(())
+    }
+
+    pub fn to_writer<T: Write + Seek, S>(writer: T, map: &Map) -> Result<()>
+    where
+        S: MapSerde,
+    {
+        S::to_writer(writer, map)?;
+        Ok(())
+    }
+
     fn from_phxm_file(path: &Path) -> Result<Self> {
         PHXMSerde::from_file(path)
     }
 
-    #[allow(unused)]
-    fn from_phxm_reader<T: Read + Seek>(reader: T) -> Result<Self> {
-        PHXMSerde::from_reader(reader)
-    }
-
-    #[allow(unused)]
     fn from_sspm_file(path: &Path) -> Result<Self> {
         SSPMSerde::from_file(path)
-    }
-
-    #[allow(unused)]
-    fn from_sspm_reader<T: Read + Seek>(reader: T) -> Result<Self> {
-        SSPMSerde::from_reader(reader)
     }
 }

@@ -110,7 +110,6 @@ impl MapSerde for PHXMSerde {
         PHXMSerde::parse_phxm(reader)
     }
 
-    #[allow(unused)]
     fn to_file(path: &Path, map: &Map) -> Result<()> {
         if path.extension() != Some(OsStr::new("phxm")) {
             return Err(io::Error::new(
@@ -122,6 +121,11 @@ impl MapSerde for PHXMSerde {
         let writer = File::create(path)?;
         PHXMSerde::encode_phxm(writer, map)?;
         Ok(Default::default())
+    }
+
+    fn to_writer<T: Write + Seek>(writer: T, map: &Map) -> Result<()> {
+        PHXMSerde::encode_phxm(writer, map)?;
+        Ok(())
     }
 }
 
