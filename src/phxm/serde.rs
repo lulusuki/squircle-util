@@ -166,8 +166,12 @@ impl PHXMSerde {
         obj_writer.write_u32(map.info.note_count)?;
 
         for note in map.objects.notes.iter() {
-            let quantum = (note.position.x.floor()) != note.position.x
-                || note.position.y.floor() != note.position.y;
+            let quantum = note.position.x.floor() != note.position.x
+                || note.position.y.floor() != note.position.y
+                || note.position.x > 1.0
+                || note.position.x < -1.0
+                || note.position.y > 1.0
+                || note.position.y < -1.0;
 
             obj_writer.write_u32(note.millisecond)?;
             obj_writer.write_bool(quantum)?;
@@ -178,8 +182,8 @@ impl PHXMSerde {
                     obj_writer.write_f32(note.position.y)?;
                 }
                 false => {
-                    obj_writer.write_u8(note.position.x as u8 + 1)?;
-                    obj_writer.write_u8(note.position.y as u8 + 1)?;
+                    obj_writer.write_u8((note.position.x + 1.0) as u8)?;
+                    obj_writer.write_u8((note.position.y + 1.0) as u8)?;
                 }
             }
         }

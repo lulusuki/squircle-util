@@ -122,7 +122,6 @@ impl<T: Seek + Read> SSPMReader<T> {
         Ok(buf)
     }
 
-    #[allow(unused)]
     pub fn read_vec2(&mut self) -> Result<Vector2> {
         let quantum = self.read_bool()?;
         let mut pos = Vector2::zero();

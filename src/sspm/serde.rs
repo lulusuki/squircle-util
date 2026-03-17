@@ -3,6 +3,7 @@ use std::ffi::OsStr;
 use std::fs::File;
 use std::io::{self, Read, Result, Seek, SeekFrom, Write};
 use std::path::Path;
+use std::usize;
 
 use num::Zero;
 
@@ -160,12 +161,15 @@ impl SSPMSerde {
 
             writer.write_bool(quantum)?;
 
+            let x = note.position.x + 1.0;
+            let y = -note.position.y + 1.0;
+
             if quantum {
-                writer.write_f32(note.position.x)?;
-                writer.write_f32(note.position.y)?;
+                writer.write_f32(x)?;
+                writer.write_f32(y)?;
             } else {
-                writer.write_u8(note.position.x as u8 + 1)?;
-                writer.write_u8(note.position.y as u8 + 1)?;
+                writer.write_u8(x as u8)?;
+                writer.write_u8(y as u8)?;
             }
         }
 
@@ -194,7 +198,7 @@ impl SSPMSerde {
         // The first 4 bytes are the file signature "SS+m"
         // The next 2 bytes are the version of the sspm (currently only version 2 is supported)
         // The rest of the header is unused
-        let mut header = [0u8; 10];
+        let mut header = [0u8; 8];
         reader.read_exact(&mut header)?;
 
         // Header signature must be "SS+m"
@@ -222,27 +226,34 @@ impl SSPMSerde {
         let length = reader.read_u32()?; // Last object millisecond
         let note_count = reader.read_u32()?; // Note object count
         let difficulty = reader.read_u8()?; // Difficulty of the map
-        let difficulty_name =
-            DifficultyName::from_u8(difficulty).unwrap_or(DifficultyName::None("N/A".to_string()));
+        let difficulty_name = DifficultyName::from_u8(difficulty).unwrap_or_default();
 
         let mut cover_buf: Option<Vec<u8>> = None;
         let mut audio_buf: Option<Vec<u8>> = None;
 
         if reader.read_u8()? == 0x02 {
-            let cover_data_length = reader.read_u32()?;
-            cover_buf = Some(vec![0u8; cover_data_length as usize]);
+            let cover_data_length = reader.read_u64()?;
+            let mut buf = vec![0u8; cover_data_length as usize];
+            reader.read_exact(&mut buf)?;
+            cover_buf = Some(buf);
         }
 
         if reader.read_u8()? == 0x01 {
-            let audio_data_length = reader.read_u32()?;
-            audio_buf = Some(vec![0u8; audio_data_length as usize]);
+            let audio_data_length = reader.read_u64()?;
+            let mut buf = vec![0u8; audio_data_length as usize];
+            reader.read_exact(&mut buf)?;
+            audio_buf = Some(buf);
         }
 
         let mut notes = Vec::<Note>::new();
 
         for _ in 0..note_count {
             let millisecond = reader.read_u32()?;
-            let position = reader.read_vec2()?;
+            let mut position = reader.read_vec2()?;
+
+            position.x -= 1.0;
+            position.y = -position.y + 1.0;
+
             notes.push(Note {
                 millisecond,
                 position,
@@ -253,7 +264,12 @@ impl SSPMSerde {
             title: map_name,
             artist: String::new(),
             difficulty_name: difficulty_name,
-            mappers: mappers.split(",").map(|s| s.to_string()).collect(),
+            mappers: mappers
+                .split(", ")
+                .collect::<String>()
+                .split("& ")
+                .map(|s| s.to_string())
+                .collect(),
             length: length,
             cover_buf: cover_buf,
             audio_buf: audio_buf,
@@ -280,6 +296,7 @@ impl SSPMSerde {
     }
 
     fn read_sspm_v2<T: Read + Seek>(mut reader: SSPMReader<T>) -> Result<Map> {
+        reader.seek(SeekFrom::Current(2))?;
         let _hash = reader.read_sha1()?; // SHA1 hash of the file
         let millisecond = reader.read_u32()?; // Last object millisecond
         let note_count = reader.read_u32()?; // Note object count

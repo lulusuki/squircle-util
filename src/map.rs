@@ -197,19 +197,19 @@ impl Map {
         S::from_reader(reader)
     }
 
-    pub fn to_file<S>(path: &Path, map: &Map) -> Result<()>
+    pub fn to_file<S>(&self, path: &Path) -> Result<()>
     where
         S: MapSerde,
     {
-        S::to_file(path, map)?;
+        S::to_file(path, self)?;
         Ok(())
     }
 
-    pub fn to_writer<T: Write + Seek, S>(writer: T, map: &Map) -> Result<()>
+    pub fn to_writer<T: Write + Seek, S>(&self, writer: T) -> Result<()>
     where
         S: MapSerde,
     {
-        S::to_writer(writer, map)?;
+        S::to_writer(writer, self)?;
         Ok(())
     }
 

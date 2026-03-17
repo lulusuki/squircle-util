@@ -1,5 +1,5 @@
-pub mod io;
+mod io;
 pub mod serde;
 
-pub use io::*;
+use io::*;
 pub use serde::*;

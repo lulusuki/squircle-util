@@ -1,6 +1,6 @@
 use std::{
     fmt,
-    ops::{Add, Div, Mul, Rem, Sub},
+    ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Rem, RemAssign, Sub, SubAssign},
 };
 
 use num::{Num, One, Zero};
@@ -139,24 +139,63 @@ impl Zero for Vector2 {
     }
 }
 
+impl AddAssign for Vector2 {
+    fn add_assign(&mut self, rhs: Self) {
+        self.x += rhs.x;
+        self.y += rhs.y;
+    }
+}
+
+impl SubAssign for Vector2 {
+    fn sub_assign(&mut self, rhs: Self) {
+        self.x -= rhs.x;
+        self.y -= rhs.y;
+    }
+}
+
+impl MulAssign for Vector2 {
+    fn mul_assign(&mut self, rhs: Self) {
+        self.x *= rhs.x;
+        self.y *= rhs.y;
+    }
+}
+
+impl DivAssign for Vector2 {
+    fn div_assign(&mut self, rhs: Self) {
+        self.x /= rhs.x;
+        self.y /= rhs.y;
+    }
+}
+
+impl RemAssign for Vector2 {
+    fn rem_assign(&mut self, rhs: Self) {
+        self.x %= rhs.x;
+        self.y %= rhs.y;
+    }
+}
+
 impl Num for Vector2 {
     type FromStrRadixErr = ParseVectorError;
 
-    // TODO: Change to only accept `0.0 0.0` or `0 0`
     fn from_str_radix(str: &str, radix: u32) -> Result<Self, ParseVectorError> {
-        if radix != 10 {
-            return Err(ParseVectorError {
-                kind: VectorErrorKind::Invalid,
-            });
-        }
+        let mut values = str.split("_");
 
-        let res = f32::from_str_radix(str, radix);
+        let x = values.next().ok_or(ParseVectorError {
+            kind: VectorErrorKind::Invalid,
+        })?;
 
-        match res {
-            Ok(res) => Ok(Vector2 { x: res, y: res }),
-            Err(_) => Err(ParseVectorError {
-                kind: VectorErrorKind::Invalid,
-            }),
-        }
+        let y = values.next().ok_or(ParseVectorError {
+            kind: VectorErrorKind::Invalid,
+        })?;
+
+        let res_x = f32::from_str_radix(x, radix).map_err(|_| ParseVectorError {
+            kind: VectorErrorKind::Invalid,
+        })?;
+
+        let res_y = f32::from_str_radix(y, radix).map_err(|_| ParseVectorError {
+            kind: VectorErrorKind::Invalid,
+        })?;
+
+        Ok(Vector2 { x: res_x, y: res_y })
     }
 }
