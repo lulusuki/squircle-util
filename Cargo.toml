@@ -3,7 +3,7 @@ name = "squircle_util"
 version = "0.1.0"
 edition = "2024"
 description = "Parser for Rhythia type maps"
-license = "AGPLv3"
+license = "AGPL-3.0"
 keywords = ["gamedev", "rhythia", "sspm", "phxm", "rhym"]
 readme = "README.md"
 
