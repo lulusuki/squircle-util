@@ -3,15 +3,15 @@ use serde::{Deserialize, Serialize};
 use std::{
     ffi::OsStr,
     fs::File,
-    io::{self, Cursor, Read, Result, Seek},
+    io::{self, Cursor, Error, ErrorKind, Read, Result, Seek, Write},
     path::Path,
 };
-use zip::ZipArchive;
+use zip::{ZipArchive, ZipWriter, write::SimpleFileOptions};
 
 use crate::{
     map::{DifficultyName, Map, MapFormat, MapInfo, MapMetadata, MapObjects, MapSerde},
     objects::note::Note,
-    phxm::PHXMReader,
+    phxm::{PHXMReader, PHXMWriter},
     types::Vector2,
 };
 
@@ -47,8 +47,7 @@ impl PHXMMetadata {
             mappers: self.mappers,
             artist: self.artist,
             length: self.length,
-            difficulty_name: DifficultyName::from_u8(self.difficulty)
-                .unwrap_or(DifficultyName::None("N/A".to_string())),
+            difficulty_name: DifficultyName::from_u8(self.difficulty).unwrap_or_default(),
             audio_buf: None,
             cover_buf: None,
             video_buf: None,
@@ -58,6 +57,38 @@ impl PHXMMetadata {
             artist_link: self.artist_link,
             artist_platform: self.artist_platform,
         }
+    }
+
+    pub fn from_map(map: Map) -> Result<Self> {
+        let mut audio_ext = String::new();
+
+        if let Some(buf) = &map.info.audio_buf {
+            if !infer::is_audio(&buf) {
+                return Err(Error::new(ErrorKind::InvalidData, "invalid audio data"));
+            }
+
+            match infer::get(&buf) {
+                Some(d) => audio_ext = d.extension().to_string(),
+                None => (),
+            }
+        }
+
+        Ok(Self {
+            id: map.id,
+            title: map.info.title,
+            mappers: map.info.mappers,
+            artist: map.info.artist,
+            length: map.info.length,
+            difficulty: map.info.difficulty_name.to_u8(),
+            difficulty_name: map.info.difficulty_name.get_value(),
+            has_audio: map.info.audio_buf.is_some(),
+            has_video: map.info.video_buf.is_some(),
+            has_cover: map.info.cover_buf.is_some(),
+            audio_ext,
+            artist_link: map.info.artist_link,
+            artist_platform: map.info.artist_platform,
+            rating: map.info.rating,
+        })
     }
 }
 
@@ -89,11 +120,82 @@ impl MapSerde for PHXMSerde {
         }
 
         let writer = File::create(path)?;
+        PHXMSerde::encode_phxm(writer, map)?;
         Ok(Default::default())
     }
 }
 
 impl PHXMSerde {
+    fn encode_phxm<T: Write + Seek>(writer: T, map: &Map) -> Result<()> {
+        let mut writer = ZipWriter::new(writer);
+
+        let options =
+            SimpleFileOptions::default().compression_method(zip::CompressionMethod::Stored);
+
+        writer.start_file("metadata.json", options)?;
+        let metadata = PHXMMetadata::from_map(map.clone())?;
+        let data = serde_json::to_vec(&metadata)?;
+        writer.write(&data)?;
+
+        if let Some(buf) = &map.info.audio_buf {
+            let audio_file = format!("audio.{}", metadata.audio_ext);
+            writer.start_file(audio_file, options)?;
+            writer.write(buf)?;
+        }
+
+        if let Some(buf) = &map.info.cover_buf {
+            writer.start_file("cover.png", options)?;
+            writer.write(buf)?;
+        }
+
+        if let Some(buf) = &map.info.video_buf {
+            writer.start_file("video.mp4", options)?;
+            writer.write(buf)?;
+        }
+
+        writer.start_file("objects.phxmo", options)?;
+
+        let object_buf = Cursor::new(Vec::<u8>::new());
+        let mut obj_writer = PHXMWriter::new(object_buf);
+
+        obj_writer.write_u32(12)?;
+        obj_writer.write_u32(map.info.note_count)?;
+
+        for note in map.objects.notes.iter() {
+            let quantum = (note.position.x.floor()) != note.position.x
+                || note.position.y.floor() != note.position.y;
+
+            obj_writer.write_u32(note.millisecond)?;
+            obj_writer.write_bool(quantum)?;
+
+            match quantum {
+                true => {
+                    obj_writer.write_f32(note.position.x)?;
+                    obj_writer.write_f32(note.position.y)?;
+                }
+                false => {
+                    obj_writer.write_u8(note.position.x as u8 + 1)?;
+                    obj_writer.write_u8(note.position.y as u8 + 1)?;
+                }
+            }
+        }
+
+        obj_writer.write_u32(0)?; // timing point count
+        obj_writer.write_u32(0)?; // brightness count
+        obj_writer.write_u32(0)?; // contrast count
+        obj_writer.write_u32(0)?; // saturation count
+        obj_writer.write_u32(0)?; // blur count
+        obj_writer.write_u32(0)?; // fov count
+        obj_writer.write_u32(0)?; // tint count
+        obj_writer.write_u32(0)?; // position count
+        obj_writer.write_u32(0)?; // rotation count
+        obj_writer.write_u32(0)?; // ar factor count
+        obj_writer.write_u32(0)?; // text count
+
+        writer.write(&obj_writer.into_inner().into_inner())?;
+
+        Ok(())
+    }
     fn parse_phxm<T: Read + Seek>(reader: T) -> Result<Map> {
         let mut archive = ZipArchive::new(reader)?;
         let mut cover_buf: Option<Vec<u8>> = None;
@@ -153,13 +255,10 @@ impl PHXMSerde {
                     pos.y = reader.read_f32()?;
                 }
                 false => {
-                    pos.x = reader.read_u8()? as f32;
-                    pos.y = reader.read_u8()? as f32;
+                    pos.x = reader.read_u8()? as f32 - 1.0;
+                    pos.y = reader.read_u8()? as f32 - 1.0;
                 }
             };
-
-            pos.x -= 1.0;
-            pos.y -= 1.0;
 
             let note = Note {
                 millisecond: ms,

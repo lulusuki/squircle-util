@@ -9,7 +9,7 @@ use crate::{
     sspm::SSPMSerde,
 };
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub enum MapFormat {
     PHXM,
     #[default]
@@ -22,7 +22,7 @@ pub struct MapSet {
     pub maps: Vec<Map>,
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct Map {
     pub id: String,
     pub info: MapInfo,
@@ -54,7 +54,7 @@ pub struct MapInfo {
     pub artist_platform: Option<String>,
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct MapMetadata {
     pub format: MapFormat,
 }
@@ -141,7 +141,7 @@ impl DifficultyName {
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct MapObjects {
     pub notes: Vec<Note>,
     pub undefined: Vec<ObjectDefinition>,
@@ -199,14 +199,17 @@ impl Map {
         PHXMSerde::from_file(path)
     }
 
+    #[allow(unused)]
     fn from_phxm_reader<T: Read + Seek>(reader: T) -> Result<Self> {
         PHXMSerde::from_reader(reader)
     }
 
+    #[allow(unused)]
     fn from_sspm_file(path: &Path) -> Result<Self> {
         SSPMSerde::from_file(path)
     }
 
+    #[allow(unused)]
     fn from_sspm_reader<T: Read + Seek>(reader: T) -> Result<Self> {
         SSPMSerde::from_reader(reader)
     }

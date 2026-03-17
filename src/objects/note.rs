@@ -3,7 +3,7 @@ use std::io::{self, Result};
 use crate::Vector2;
 use crate::objects::{HitObject, ObjectDefinition, ObjectType, TimelineObject};
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct Note {
     pub millisecond: u32,
     pub position: Vector2,

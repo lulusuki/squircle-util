@@ -168,6 +168,9 @@ impl<T: Seek + Read> PHXMReader<T> {
 }
 
 impl<T: Write + Seek> PHXMWriter<T> {
+    pub fn into_inner(self) -> T {
+        self.writer
+    }
     pub fn new(writer: T) -> Self {
         Self { writer }
     }

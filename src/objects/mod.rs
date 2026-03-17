@@ -4,7 +4,7 @@ use crate::{Vector2, Vector3};
 
 pub mod note;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum ObjectType {
     U8(Option<u8>),
     I16(Option<i16>),
@@ -29,7 +29,7 @@ pub enum ObjectType {
     Tuple(Option<Vec<ObjectType>>),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ObjectDefinition {
     pub name: String,
     pub millisecond: u32,

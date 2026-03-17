@@ -8,7 +8,7 @@ use num::Zero;
 
 use super::{SSPMReader, SSPMWriter};
 use crate::Vector2;
-use crate::map::{DifficultyName, Map, MapInfo, MapMetadata, MapObjects, MapSerde, MapSet};
+use crate::map::{DifficultyName, Map, MapInfo, MapMetadata, MapObjects, MapSerde};
 use crate::objects::note::Note;
 use crate::objects::{ObjectDefinition, ObjectType, TimelineObject};
 
@@ -166,7 +166,7 @@ impl MapSerde for SSPMSerde {
         if path.extension() != Some(OsStr::new("sspm")) {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidFilename,
-                "Extension needs to be .sspm",
+                "extension needs to be .sspm",
             ));
         }
 
@@ -193,7 +193,7 @@ impl SSPMSerde {
         if header[0..4] != *b"SS+m" {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidData,
-                "Incorrect file signature",
+                "incorrect file signature",
             ));
         }
 
@@ -202,7 +202,7 @@ impl SSPMSerde {
             [0x02, 0x00] => SSPMSerde::parse_sspm_v2(reader),
             _ => Err(io::Error::new(
                 io::ErrorKind::InvalidData,
-                "Unsupported SSPM version",
+                "unsupported SSPM version",
             )),
         }
     }
@@ -358,7 +358,7 @@ impl SSPMSerde {
             {
                 return Err(io::Error::new(
                     io::ErrorKind::InvalidData,
-                    "Missing empty byte on object definition",
+                    "missing empty byte on object definition",
                 ));
             }
 
@@ -445,7 +445,7 @@ impl SSPMSerde {
                 _ => {
                     return Err(io::Error::new(
                         io::ErrorKind::InvalidData,
-                        "Invalid object type",
+                        "invalid object type",
                     ));
                 }
             }
@@ -499,7 +499,7 @@ impl SSPMSerde {
             ObjectType::LongString(_) => Self::parse_long_string(parser),
             _ => Err(io::Error::new(
                 io::ErrorKind::InvalidData,
-                "Invalid object type",
+                "invalid object type",
             )),
         }
     }
