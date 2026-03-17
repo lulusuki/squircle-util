@@ -17,10 +17,12 @@ impl<T: Seek + Read> PHXMReader<T> {
         Self { reader }
     }
 
+    #[allow(unused)]
     pub fn seek(&mut self, pos: SeekFrom) -> Result<u64> {
         self.reader.seek(pos)
     }
 
+    #[allow(unused)]
     pub fn stream_position(&mut self) -> Result<u64> {
         self.reader.stream_position()
     }
@@ -37,6 +39,7 @@ impl<T: Seek + Read> PHXMReader<T> {
         Ok(buf[0])
     }
 
+    #[allow(unused)]
     pub fn read_u16(&mut self) -> Result<u16> {
         let mut buf = [0u8; 2];
         self.reader.read_exact(&mut buf)?;
@@ -49,6 +52,7 @@ impl<T: Seek + Read> PHXMReader<T> {
         Ok(u32::from_le_bytes(buf))
     }
 
+    #[allow(unused)]
     pub fn read_u64(&mut self) -> Result<u64> {
         let mut buf = [0u8; 8];
         self.reader.read_exact(&mut buf)?;
@@ -61,12 +65,14 @@ impl<T: Seek + Read> PHXMReader<T> {
         Ok(f32::from_le_bytes(buf))
     }
 
+    #[allow(unused)]
     pub fn read_f64(&mut self) -> Result<f64> {
         let mut buf = [0u8; 8];
         self.reader.read_exact(&mut buf)?;
         Ok(f64::from_le_bytes(buf))
     }
 
+    #[allow(unused)]
     pub fn read_string(&mut self) -> Result<String> {
         let buf = self.read_u16()?;
         let mut buffer = vec![0u8; buf as usize];
@@ -78,6 +84,7 @@ impl<T: Seek + Read> PHXMReader<T> {
         Ok(str)
     }
 
+    #[allow(unused)]
     pub fn read_newline_string(&mut self) -> Result<String> {
         let mut buffer = Vec::new();
         let mut byte = [0u8; 1];
@@ -100,6 +107,7 @@ impl<T: Seek + Read> PHXMReader<T> {
         Ok(str)
     }
 
+    #[allow(unused)]
     pub fn read_long_string(&mut self) -> Result<String> {
         let buf = self.read_u32()?;
         let mut buffer = vec![0u8; buf as usize];
@@ -116,6 +124,7 @@ impl<T: Seek + Read> PHXMReader<T> {
         }
     }
 
+    #[allow(unused)]
     pub fn read_sha1(&mut self) -> Result<[u8; 20]> {
         let mut buf = [0u8; 20];
         self.reader.read_exact(&mut buf)?;
@@ -162,6 +171,7 @@ impl<T: Seek + Read> PHXMReader<T> {
         Ok(pos)
     }
 
+    #[allow(unused)]
     pub fn read_exact(&mut self, buf: &mut [u8]) -> Result<()> {
         self.reader.read_exact(buf)
     }
@@ -184,6 +194,7 @@ impl<T: Write + Seek> PHXMWriter<T> {
         self.writer.write_all(&[value])
     }
 
+    #[allow(unused)]
     pub fn write_u16(&mut self, value: u16) -> Result<()> {
         self.writer.write_all(&value.to_le_bytes())
     }
@@ -192,6 +203,7 @@ impl<T: Write + Seek> PHXMWriter<T> {
         self.writer.write_all(&value.to_le_bytes())
     }
 
+    #[allow(unused)]
     pub fn write_u64(&mut self, value: u64) -> Result<()> {
         self.writer.write_all(&value.to_le_bytes())
     }
@@ -206,6 +218,7 @@ impl<T: Write + Seek> PHXMWriter<T> {
         self.writer.write_all(&value.to_le_bytes())
     }
 
+    #[allow(unused)]
     pub fn write_string(&mut self, value: &str) -> Result<()> {
         let len = value.len() as u16;
         self.writer.write_all(&len.to_le_bytes())?;
@@ -219,18 +232,22 @@ impl<T: Write + Seek> PHXMWriter<T> {
         self.writer.write_all(value.as_bytes())
     }
 
+    #[allow(unused)]
     pub fn write_sha1(&mut self, value: &[u8; 20]) -> Result<()> {
         self.writer.write_all(value)
     }
 
+    #[allow(unused)]
     pub fn write_all(&mut self, buf: &[u8]) -> Result<()> {
         self.writer.write_all(buf)
     }
 
+    #[allow(unused)]
     pub fn stream_position(&mut self) -> Result<u64> {
         self.writer.stream_position()
     }
 
+    #[allow(unused)]
     pub fn seek(&mut self, pos: SeekFrom) -> Result<u64> {
         self.writer.seek(pos)
     }

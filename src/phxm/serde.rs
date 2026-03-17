@@ -38,7 +38,6 @@ struct PHXMMetadata {
 }
 
 impl PHXMMetadata {
-    #[allow(unused)]
     pub fn to_map_info(self) -> MapInfo {
         let mut _difficulty_name: DifficultyName;
 

@@ -8,4 +8,5 @@
 //
 // To be documented.
 
+mod io;
 pub mod serde;
